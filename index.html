@@ -11,15 +11,111 @@
             padding: 0;
             width: 100%;
             height: 100%;
+            min-height: 100%;
             overflow: hidden;
             background: black;
         }
 
         canvas {
             display: block;
-            width: 100vw;
-            height: 100vh;
+            width: 100%;
+            height: 100dvh;
             background: black;
+            opacity: 0;
+            transition: opacity 1.4s ease;
+        }
+
+        body.revealed canvas {
+            opacity: 1;
+        }
+
+        #teaser {
+            position: fixed;
+            inset: 0;
+            display: grid;
+            place-items: center;
+            box-sizing: border-box;
+            padding: max(24px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
+            z-index: 3;
+            color: rgba(255, 255, 255, 0.72);
+            background: #000;
+            transition: opacity 1.1s ease, visibility 1.1s ease;
+        }
+
+        #teaser.is-hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        .teaser-content {
+            width: min(100%, 360px);
+            text-align: center;
+            font-family: Georgia, serif;
+        }
+
+        .teaser-code {
+            margin: 0 0 18px;
+            color: rgba(135, 206, 250, 0.78);
+            font: 14px/1.4 Georgia, serif;
+        }
+
+        .teaser-title {
+            margin: 0 0 24px;
+            color: rgba(255, 255, 255, 0.82);
+            font-size: 38px;
+            line-height: 1.1;
+            font-weight: normal;
+        }
+
+        #revealButton {
+            min-height: 48px;
+            max-width: 100%;
+            padding: 13px 22px;
+            border: 1px solid rgba(135, 206, 250, 0.65);
+            border-radius: 999px;
+            color: white;
+            background: rgba(30, 144, 255, 0.24);
+            font: 15px Georgia, serif;
+            cursor: pointer;
+            touch-action: manipulation;
+            transition: border-color 0.2s ease, color 0.2s ease;
+        }
+
+        #revealButton:hover,
+        #revealButton:focus-visible {
+            border-color: white;
+            color: white;
+            outline: none;
+        }
+
+        #musicPrompt {
+            position: fixed;
+            left: 50%;
+            bottom: max(16px, env(safe-area-inset-bottom));
+            transform: translateX(-50%);
+            box-sizing: border-box;
+            max-width: calc(100% - 32px);
+            min-height: 48px;
+            padding: 12px 18px;
+            border: 1px solid rgba(255, 255, 255, 0.45);
+            border-radius: 999px;
+            color: white;
+            background: rgba(0, 0, 0, 0.72);
+            font: 600 14px/1.2 sans-serif;
+            cursor: pointer;
+            touch-action: manipulation;
+            z-index: 2;
+        }
+
+        #musicPrompt[hidden] {
+            display: none;
+        }
+
+        @media (max-width: 420px) {
+            .teaser-title {
+                font-size: 30px;
+            }
         }
     </style>
 </head>
@@ -27,22 +123,34 @@
 <body>
 
 <canvas id="canvas"></canvas>
+<main id="teaser" aria-label="A small surprise">
+    <div class="teaser-content">
+        <p class="teaser-code">I made something for you</p>
+        <h1 class="teaser-title">A little surprise, just for you</h1>
+        <button id="revealButton" type="button">Open your surprise</button>
+    </div>
+</main>
+<button id="musicPrompt" type="button" hidden>Tap to start music</button>
 
 <script>
 "use strict";
 
 // ==============================
-// SETTINGS
+// CANVAS
 // ==============================
 
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
 const WIDTH = 2000;
-const HEIGHT = 1200;
+let HEIGHT = 1200;
 
-const FPS = 60;
 const SCALE = 20;
+
+
+// ==============================
+// SETTINGS
+// ==============================
 
 const WORDS = [
     "love you",
@@ -66,6 +174,10 @@ const COLORS = [
 // ==============================
 
 function resizeCanvas() {
+    HEIGHT =
+        WIDTH *
+        (window.innerHeight / window.innerWidth);
+
     canvas.width = WIDTH;
     canvas.height = HEIGHT;
 }
@@ -78,7 +190,9 @@ resizeCanvas();
 // ==============================
 
 function randomChoice(array) {
-    return array[Math.floor(Math.random() * array.length)];
+    return array[
+        Math.floor(Math.random() * array.length)
+    ];
 }
 
 function randomRange(min, max) {
@@ -86,7 +200,9 @@ function randomRange(min, max) {
 }
 
 function randomInt(min, max) {
-    return Math.floor(randomRange(min, max + 1));
+    return Math.floor(
+        randomRange(min, max + 1)
+    );
 }
 
 
@@ -122,7 +238,9 @@ class Particle {
         );
 
         this.fontSize =
-            kind === "outline" ? 20 : 17;
+            kind === "outline"
+                ? 20
+                : 17;
     }
 }
 
@@ -150,7 +268,7 @@ function heartXY(t) {
 
 
 // ==============================
-// CONVERT TO SCREEN
+// SCREEN POSITION
 // ==============================
 
 function toScreen(x, y) {
@@ -177,12 +295,17 @@ function buildOutlineParticles(
     for (let i = 0; i < nOutline; i++) {
 
         const t =
-            (i / nOutline) * Math.PI * 2;
+            (i / nOutline) *
+            Math.PI * 2;
 
-        const heart = heartXY(t);
+        const heart =
+            heartXY(t);
 
         const screenPos =
-            toScreen(heart.x, heart.y);
+            toScreen(
+                heart.x,
+                heart.y
+            );
 
         let tooClose = false;
 
@@ -248,16 +371,25 @@ function buildFillParticles(
         attempts++;
 
         const t =
-            randomRange(0, Math.PI * 2);
+            randomRange(
+                0,
+                Math.PI * 2
+            );
 
         const r =
-            randomRange(0.0, 0.86);
+            randomRange(
+                0.0,
+                0.86
+            );
 
         const heart =
             heartXY(t);
 
-        const px = heart.x * r;
-        const py = heart.y * r;
+        const px =
+            heart.x * r;
+
+        const py =
+            heart.y * r;
 
         const screenPos =
             toScreen(px, py);
@@ -273,7 +405,8 @@ function buildFillParticles(
                 screenPos.y - point.y;
 
             if (
-                Math.hypot(dx, dy) < minGap
+                Math.hypot(dx, dy)
+                < minGap
             ) {
                 tooClose = true;
                 break;
@@ -301,7 +434,7 @@ function buildFillParticles(
 
 
 // ==============================
-// COLOR
+// RGB COLOR
 // ==============================
 
 function rgb(color) {
@@ -352,12 +485,13 @@ function drawGlowText(
         rgb(color);
 
     // --------------------------
-    // Large glow
+    // LARGE GLOW
     // --------------------------
 
     if (alpha > 10) {
 
         ctx.shadowBlur = 25;
+
         ctx.shadowColor =
             `rgba(
                 ${color[0]},
@@ -382,7 +516,7 @@ function drawGlowText(
 
 
         // --------------------------
-        // Smaller glow
+        // SMALLER GLOW
         // --------------------------
 
         ctx.shadowBlur = 10;
@@ -404,7 +538,7 @@ function drawGlowText(
 
 
     // --------------------------
-    // Main text
+    // MAIN TEXT
     // --------------------------
 
     ctx.shadowBlur = 4;
@@ -428,7 +562,7 @@ function drawGlowText(
 
 
 // ==============================
-// MAIN
+// MAIN SETUP
 // ==============================
 
 let outline;
@@ -448,8 +582,10 @@ function setup() {
     const outlineSpan =
         outline.length > 0
             ? Math.max(
-                ...outline.map(p => p.order)
-              )
+                ...outline.map(
+                    p => p.order
+                )
+            )
             : 0;
 
     const framesPerStep = 1.6;
@@ -462,7 +598,7 @@ function setup() {
 
 
     // --------------------------
-    // Delays
+    // PARTICLE DELAYS
     // --------------------------
 
     for (const p of fill) {
@@ -512,16 +648,25 @@ function drawCenterText(
     const centerAlpha =
         Math.floor(
             255 *
-            (1 - Math.exp(-progress * 8))
+            (
+                1 -
+                Math.exp(
+                    -progress * 8
+                )
+            )
         );
 
 
-    // Pulse
+    // --------------------------
+    // PULSE
+    // --------------------------
 
     const pulse =
         1.0 +
         0.025 *
-        Math.sin(frame * 0.05);
+        Math.sin(
+            frame * 0.05
+        );
 
 
     ctx.save();
@@ -534,7 +679,7 @@ function drawCenterText(
 
 
     // --------------------------
-    // Center glow
+    // CENTER GLOW
     // --------------------------
 
     if (centerAlpha > 10) {
@@ -566,7 +711,7 @@ function drawCenterText(
 
 
     // --------------------------
-    // Main center text
+    // MAIN CENTER TEXT
     // --------------------------
 
     ctx.shadowBlur = 8;
@@ -578,7 +723,6 @@ function drawCenterText(
             245,
             ${centerAlpha / 255}
         )`;
-
 
     ctx.translate(
         WIDTH / 2,
@@ -604,11 +748,13 @@ function drawCenterText(
 // ANIMATION
 // ==============================
 
-const fillStartFrame = setup();
+const fillStartFrame =
+    setup();
 
 const centerStart =
     fillStartFrame + 200;
 
+let animationId = null;
 
 function animate() {
 
@@ -616,7 +762,7 @@ function animate() {
 
 
     // --------------------------
-    // Clear screen
+    // CLEAR SCREEN
     // --------------------------
 
     ctx.fillStyle = "black";
@@ -630,7 +776,7 @@ function animate() {
 
 
     // --------------------------
-    // Particles
+    // PARTICLES
     // --------------------------
 
     for (const p of particles) {
@@ -688,7 +834,7 @@ function animate() {
 
 
     // --------------------------
-    // Center text
+    // CENTER TEXT
     // --------------------------
 
     drawCenterText(
@@ -696,47 +842,206 @@ function animate() {
     );
 
 
-    requestAnimationFrame(
-        animate
-    );
+    animationId =
+        requestAnimationFrame(
+            animate
+        );
 }
 
 
 // ==============================
 // MUSIC
 // ==============================
+//
+// Put love_you.mp3 in the SAME
+// folder as this HTML file.
+//
+// Example:
+//
+// index.html
+// love_you.mp3
+//
+// ==============================
 
 const music =
-    new Audio("love_you.mp3");
+    new Audio("./love_you.mp3");
 
+const musicPrompt =
+    document.getElementById("musicPrompt");
+
+const teaser =
+    document.getElementById("teaser");
+
+const revealButton =
+    document.getElementById("revealButton");
+
+music.preload = "auto";
 music.loop = false;
 music.volume = 1.0;
 
 
-// Browsers normally block
-// autoplay until user interacts.
+// ------------------------------
+// START MUSIC
+// ------------------------------
 
-function startMusic() {
+async function startMusic() {
 
-    music.play().catch(() => {
+    try {
+
+        await music.play();
+
         console.log(
-            "Click the page to start music."
+            "love_you.mp3 started."
         );
-    });
+
+        musicStarted = true;
+        musicPrompt.hidden = true;
+
+    } catch (error) {
+
+        console.log(
+            "Autoplay blocked by browser."
+        );
+
+        musicPrompt.hidden = false;
+    }
 }
 
 
-// Start music after first click
+// ------------------------------
+// STOP MUSIC
+// ------------------------------
+
+function stopMusic() {
+
+    music.pause();
+
+    try {
+        music.currentTime = 0;
+    } catch (error) {
+        // Ignore reset errors
+    }
+}
+
+
+// ------------------------------
+// PRELOAD MP3
+// ------------------------------
+
+music.load();
+
+
+// ------------------------------
+// TRY AUTOPLAY ON PAGE LOAD
+// ------------------------------
+
+// ------------------------------
+// FALLBACK CLICK
+// ------------------------------
+//
+// Browsers can block autoplay.
+// A click/tap will then start music.
+//
+
+let musicStarted = false;
+
+async function userStartMusic() {
+
+    if (musicStarted) {
+        return;
+    }
+
+    try {
+
+        await music.play();
+
+        musicStarted = true;
+        musicPrompt.hidden = true;
+
+        document.removeEventListener(
+            "click",
+            userStartMusic
+        );
+
+        document.removeEventListener(
+            "touchstart",
+            userStartMusic
+        );
+
+        console.log(
+            "Music started after user interaction."
+        );
+
+    } catch (error) {
+
+        console.log(
+            "Could not start music:",
+            error
+        );
+    }
+}
+
 
 document.addEventListener(
     "click",
-    startMusic,
-    { once: true }
+    userStartMusic,
+    { passive: true }
+);
+
+document.addEventListener(
+    "touchstart",
+    userStartMusic,
+    { passive: true }
+);
+
+musicPrompt.addEventListener(
+    "click",
+    userStartMusic
+);
+
+
+// ------------------------------
+// STOP WHEN TAB IS HIDDEN
+// ------------------------------
+
+document.addEventListener(
+    "visibilitychange",
+    () => {
+
+        if (document.hidden) {
+
+            stopMusic();
+
+        }
+    }
+);
+
+
+// ------------------------------
+// STOP WHEN LEAVING PAGE
+// ------------------------------
+
+window.addEventListener(
+    "pagehide",
+    () => {
+
+        stopMusic();
+
+    }
+);
+
+window.addEventListener(
+    "beforeunload",
+    () => {
+
+        stopMusic();
+
+    }
 );
 
 
 // ==============================
-// ESC TO STOP
+// ESC TO STOP EVERYTHING
 // ==============================
 
 document.addEventListener(
@@ -745,11 +1050,15 @@ document.addEventListener(
 
         if (event.key === "Escape") {
 
-            music.pause();
+            stopMusic();
 
-            cancelAnimationFrame(
-                animate
-            );
+            if (animationId !== null) {
+
+                cancelAnimationFrame(
+                    animationId
+                );
+
+            }
 
             document.body.innerHTML = "";
         }
@@ -758,13 +1067,47 @@ document.addEventListener(
 
 
 // ==============================
-// START
+// START ANIMATION
 // ==============================
 
-animate();
+function revealAnimation() {
+
+    if (animationId !== null) {
+        return;
+    }
+
+    document.body.classList.add("revealed");
+    teaser.classList.add("is-hidden");
+    revealButton.disabled = true;
+
+    if (window.location.hash !== "#open") {
+        window.history.replaceState(null, "", "#open");
+    }
+
+    animate();
+    startMusic();
+}
+
+
+revealButton.addEventListener(
+    "click",
+    revealAnimation
+);
+
+window.addEventListener(
+    "load",
+    () => {
+
+        if (window.location.hash === "#open") {
+            teaser.classList.add("is-hidden");
+            document.body.classList.add("revealed");
+            animate();
+            startMusic();
+        }
+    }
+);
 
 </script>
 
 </body>
 </html>
-
